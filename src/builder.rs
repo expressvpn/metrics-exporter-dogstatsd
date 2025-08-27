@@ -472,6 +472,11 @@ async fn send_all(
                 }
                 sent += nsent;
             }
+            Err(err) if matches!(err.kind(), std::io::ErrorKind::PermissionDenied) => {
+                // CVPN-1808: At present, UDP packets are dropped cause of conntrack overflow
+                // ignore these errors, otherwise it will overflow sentry alerts
+                sent += end - start;
+            }
             Err(e) => {
                 // we just log the error here because we can just skip sending one packet and try
                 // sending the other ones anyway
