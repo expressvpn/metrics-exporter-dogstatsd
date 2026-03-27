@@ -52,7 +52,7 @@ pub fn sanitize_label_value(key: &str) -> String {
     // The first character must be [a-zA-Z_], and all subsequent characters must be [a-zA-Z0-9_].
     let mut out = String::with_capacity(key.len());
     for c in key.chars() {
-        if invalid_label_character(c) {
+        if invalid_label_value_character(c) {
             out.push('_');
         } else {
             out.push(c);
@@ -208,6 +208,12 @@ fn invalid_label_start_character(c: char) -> bool {
 fn invalid_label_character(c: char) -> bool {
     // Essentially, needs to match the regex pattern of [a-zA-Z0-9_.].
     !(c.is_alphanumeric() || c == '_' || c == '.' || c == ':' || c == '/' || c == '-')
+}
+
+#[inline]
+fn invalid_label_value_character(c: char) -> bool {
+    // Same as label keys but also allows parentheses.
+    !(c.is_alphanumeric() || c == '_' || c == '.' || c == ':' || c == '/' || c == '-' || c == '(' || c == ')')
 }
 
 #[inline]
