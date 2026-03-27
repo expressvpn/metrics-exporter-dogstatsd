@@ -52,7 +52,7 @@ pub fn sanitize_label_value(key: &str) -> String {
     // The first character must be [a-zA-Z_], and all subsequent characters must be [a-zA-Z0-9_].
     let mut out = String::with_capacity(key.len());
     for c in key.chars() {
-        if invalid_label_character(c) {
+        if invalid_label_value_character(c) {
             out.push('_');
         } else {
             out.push(c);
@@ -211,7 +211,83 @@ fn invalid_label_character(c: char) -> bool {
 }
 
 #[inline]
+fn invalid_label_value_character(c: char) -> bool {
+    // Same as label keys but also allows parentheses.
+    !(c.is_alphanumeric() || c == '_' || c == '.' || c == ':' || c == '/' || c == '-' || c == '(' || c == ')')
+}
+
+#[inline]
 fn invalid_label_last_character(c: char) -> bool {
     // Essentially, needs to match the regex pattern of [a-zA-Z0-9_.].
     !(c.is_alphanumeric() || c == '_' || c == '.' || c == '/' || c == '-')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_label_value_preserves_parentheses() {
+        assert_eq!(sanitize_label_value("foo(bar)"), "foo(bar)");
+        assert_eq!(sanitize_label_value("(leading)"), "(leading)");
+        assert_eq!(sanitize_label_value("trailing("), "trailing(");
+        assert_eq!(sanitize_label_value("a(b)c"), "a(b)c");
+    }
+
+    #[test]
+    fn test_sanitize_label_value_replaces_invalid_chars() {
+        assert_eq!(sanitize_label_value("foo bar"), "foo_bar");
+        assert_eq!(sanitize_label_value("foo@bar"), "foo_bar");
+        assert_eq!(sanitize_label_value("foo!bar"), "foo_bar");
+    }
+
+    #[test]
+    fn test_sanitize_label_value_allows_valid_chars() {
+        assert_eq!(sanitize_label_value("foo_bar"), "foo_bar");
+        assert_eq!(sanitize_label_value("foo.bar"), "foo.bar");
+        assert_eq!(sanitize_label_value("foo:bar"), "foo:bar");
+        assert_eq!(sanitize_label_value("foo/bar"), "foo/bar");
+        assert_eq!(sanitize_label_value("foo-bar"), "foo-bar");
+        assert_eq!(sanitize_label_value("abc123"), "abc123");
+    }
+
+    #[test]
+    fn test_sanitize_label_replaces_invalid_start() {
+        assert_eq!(sanitize_label("1foo"), "_foo");
+        assert_eq!(sanitize_label("_foo"), "_foo");
+        assert_eq!(sanitize_label("foo"), "foo");
+    }
+
+    #[test]
+    fn test_sanitize_label_replaces_invalid_end() {
+        // Colon is not allowed as the last character
+        assert_eq!(sanitize_label("foo:"), "foo_");
+    }
+
+    #[test]
+    fn test_sanitize_label_allows_valid_chars() {
+        assert_eq!(sanitize_label("foo_bar.baz"), "foo_bar.baz");
+        assert_eq!(sanitize_label("foo-bar/baz"), "foo-bar/baz");
+        assert_eq!(sanitize_label("foo:bar"), "foo:bar");
+    }
+
+    #[test]
+    fn test_sanitize_metric_name_replaces_invalid_chars() {
+        assert_eq!(sanitize_metric_name("foo(bar)"), "foo_bar_");
+        assert_eq!(sanitize_metric_name("foo bar"), "foo_bar");
+        assert_eq!(sanitize_metric_name("foo-bar"), "foo_bar");
+    }
+
+    #[test]
+    fn test_sanitize_metric_name_replaces_invalid_start() {
+        assert_eq!(sanitize_metric_name("1foo"), "_foo");
+        assert_eq!(sanitize_metric_name("(foo"), "_foo");
+    }
+
+    #[test]
+    fn test_sanitize_metric_name_allows_valid_chars() {
+        assert_eq!(sanitize_metric_name("foo_bar"), "foo_bar");
+        assert_eq!(sanitize_metric_name("foo.bar"), "foo.bar");
+        assert_eq!(sanitize_metric_name("foo123"), "foo123");
+    }
 }
